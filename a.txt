@@ -1,0 +1,9 @@
+begin
+  int a;
+  a = 4;
+  double b;
+  b = 3.1 + 2.0 // 3.0;
+  
+  write(a);
+  write(b);
+end
