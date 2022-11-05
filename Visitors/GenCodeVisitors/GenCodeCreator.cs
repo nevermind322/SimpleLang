@@ -22,6 +22,7 @@ namespace SimpleLang.Visitors
         {
             dyn = new DynamicMethod("My", null, null, typeof(void));
             gen = dyn.GetILGenerator();
+            
         }
 
         public void Emit(OpCode op)

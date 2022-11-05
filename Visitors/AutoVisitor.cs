@@ -54,7 +54,6 @@ namespace SimpleLang.Visitors
 
         public override void VisitVarNode(VarNode vn)
         {
-           
             vn.name.Invite(this);
             if (vn.valExpr != null) vn.valExpr.Invite(this);
         }

@@ -46,7 +46,7 @@ namespace SimpleLang.Visitors
         {
             Text += IndentStr();
             a.Id.Invite(this);
-            Text += " := ";
+            Text += " = ";
             a.Expr.Invite(this);
         }
         public override void VisitCycleNode(CycleNode c) 
@@ -105,6 +105,11 @@ namespace SimpleLang.Visitors
         public override void VisitVarNode(VarNode vn)
         {
             Text += IndentStr() + vn.typeId.Name + " " + vn.name.Name;
+            if (vn.valExpr != null)
+            {
+                Text += " = ";
+                vn.valExpr.Invite(this);
+            }
         }
 
         public override void VisitFuncNode(FuncNode fn)

@@ -40,20 +40,23 @@ namespace SimpleLang.Visitors
 
             if (vn.valExpr != null)
             {
+                
                 vn.valExpr.Invite(this);
                 TYPE expr_type = vn.valExpr.type;
                 if (id_type == TYPE.INT && expr_type == TYPE.DOUBLE)
                     throw new SyntaxException("Невозможно привести double к  int");
                 else if (id_type != TYPE.INT)
                 {   
+                    
                     if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);
                     vars[vn.name.Name] = genc.DeclareLocal(typeof(double));
                 }
-                else vars[vn.name.Name] = genc.DeclareLocal(typeof(int));
                 
+                else vars[vn.name.Name] = genc.DeclareLocal(typeof(int));
                 genc.Emit(OpCodes.Stloc, vars[vn.name.Name]);
+                
             }
-            if(id_type == TYPE.INT) 
+            else if(id_type == TYPE.INT) 
                 vars[vn.name.Name] = genc.DeclareLocal(typeof(int));
             else vars[vn.name.Name] = genc.DeclareLocal(typeof(double));
         }
@@ -110,9 +113,8 @@ namespace SimpleLang.Visitors
             else if (id_type != TYPE.INT)
             {
                 if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);
-                vars[a.Id.Name] = genc.DeclareLocal(typeof(double));
             }
-            else vars[a.Id.Name] = genc.DeclareLocal(typeof(int));
+            
         
             genc.Emit(OpCodes.Stloc, vars[a.Id.Name]);
         }

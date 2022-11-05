@@ -1,6 +1,6 @@
 ﻿using ProgramTree;
 using SimpleParser;
-
+using System;
 
 namespace SimpleLang.Visitors
 {
@@ -22,18 +22,21 @@ namespace SimpleLang.Visitors
         {
             binop.Left.Invite(this);
             binop.Right.Invite(this);
-            TYPE r_type = binop.Left.type;
+            TYPE r_type = binop.Right.type;
             TYPE l_type = binop.Left.type;
             if (r_type != l_type) binop.type = TYPE.DOUBLE;
             else binop.type = l_type;
 
-            if(binop.Op == '%' || binop.Op == '\\')
+            if (binop.Op == '%' || binop.Op == '\\')
+            {
+                Console.WriteLine(r_type);
+                Console.WriteLine(l_type);
+                Console.WriteLine(binop.type);
                 if (binop.type == TYPE.DOUBLE) throw new SyntaxException("Неверный тип");
+            }
         }
 
-        public override void VisitWriteNode(WriteNode wr)
-        {
-            wr.Expr.Invite(this);
-        }
+        
+
     }
 }
