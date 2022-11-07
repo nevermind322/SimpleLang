@@ -29,8 +29,11 @@ namespace SimpleLang.Visitors
         }
         public override void VisitBlockNode(BlockNode bl) 
         {
-            foreach (var st in bl.StList)
-                st.Invite(this);
+            if (bl.StList.Count > 0 && bl.StList != null)
+            {
+                foreach (var st in bl.StList)
+                    st.Invite(this);
+            }
         }
        
      
@@ -60,12 +63,26 @@ namespace SimpleLang.Visitors
 
         public override void VisitFuncNode(FuncNode fn)
         {
-            throw new NotImplementedException();
+            fn.name.Invite(this);
+            fn.returnTypeId.Invite(this);
+            fn.body.Invite(this);
+
         }
 
         public override void VisitWriteNode(WriteNode wr)
         {
             wr.Expr.Invite(this);
+        }
+
+        public override void VisitParamNode(ParamNode pn)
+        {
+            pn.name.Invite(this);
+            pn.typeId.Invite(this);
+        }
+
+        public override void VisitFuncBodyNode(FuncBodyNode fbn)
+        {
+            foreach(var st in fbn.StList) { st.Invite(this); }
         }
     }
 }

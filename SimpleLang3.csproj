@@ -48,6 +48,7 @@
     <Compile Include="Visitors\GenCodeVisitors\GenCodeVisitor.cs" />
     <Compile Include="Visitors\GenCodeVisitors\GenCodeCreator.cs" />
     <Compile Include="Visitors\PrettyPrintVisitor.cs" />
+    <Compile Include="Visitors\SymbolCreatorVisitor.cs" />
     <Compile Include="Visitors\TypeCheckingVisitor.cs" />
     <Compile Include="Visitors\Visitor.cs" />
     <Compile Include="Main.cs" />

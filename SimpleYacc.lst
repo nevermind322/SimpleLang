@@ -4,7 +4,7 @@
 // ==========================================================================
 //  Version:  1.3.6
 //  Machine:  LAPTOP-9M8I2R2U
-//  DateTime: 04.11.2022 16:44:16
+//  DateTime: 06.11.2022 21:12:49
 //  UserName: Алексей
 // ==========================================================================
 
@@ -26,7 +26,7 @@
 			public ExprNode eVal;
 			public StatementNode stVal;
 			public BlockNode blVal;
-			public TypeNode tVal;
+			public List<ParamNode> parList;
        }
 
 %using System.IO;
@@ -37,26 +37,19 @@
 %start progr
 
 %token BEGIN END CYCLE ASSIGN ASSIGNPLUS ASSIGNMINUS ASSIGNMULT SEMICOLON VAR PLUS MINUS MULT DIV LPAREN RPAREN COLUMN DIVI MOD IF THEN ELSE FUN
-%token COLON RETURN
+%token COLON RETURN WRITE
 %token <iVal> INUM 
 %token <dVal> RNUM 
 %token <sVal> ID 
 
 
-%type <tVal> type
 %type <eVal> expr ident T F func_call valueParam
 %type <stVal> statement assign block cycle empty if return
-%type <stVal> declaration var_decl func_decl params param valueParams
+%type <stVal> declaration var_decl func_decl param valueParams write
 %type <blVal> stlist block
+%type <parList> params
 
 %%
-// Warning: NonTerminal symbol "type" is unreachable
-// Error: NonTerminal symbol "type" has no productions
-// Error: There are 1 non-terminating NonTerminal Symbols
-   //  {type}
-// Warning: Terminating type fixes the following size-1 NonTerminal set
-   // {type}
-// --------------------------------------------------------------------
 
 progr   : block { root = $1; }
 		;
@@ -79,12 +72,16 @@ statement: assign { $$ = $1; }
 		| declaration {$$ = $1;}
 		| if      { $$ = $1; }
 		| return  {$$ = $1;}
+		| write   {$$ = $1;}
 		| empty   { $$ = $1; }
 		;
 
 empty	: { $$ = new EmptyNode(); }
 		;
 	
+write	: WRITE LPAREN expr RPAREN { $$ = new WriteNode($3); }
+		;
+
 ident 	: ID 
 		{
 			
@@ -125,21 +122,25 @@ cycle	: CYCLE expr statement { $$ = new CycleNode($2,$3); }
 		;
 		
 declaration : var_decl	{$$ = $1;}
-		| func_decl		
+		| func_decl	{$$ = $1;}	
 		;
 
-var_decl : ident ident {$$ =  new VarNode($1, $2 as IdNode, "variable");}
-		| ident ident ASSIGN expr
+var_decl : ident ident {$$ =  new VarNode($1 as IdNode, $2 as IdNode, null);}
+		| ident ident ASSIGN expr {$$ =  new VarNode($1 as IdNode, $2 as IdNode, $4);}
 		;
 
 func_decl : FUN ident LPAREN params RPAREN COLON ident block
+			{$$ = new FuncNode($2 as IdNode, $4 new FuncBodyNode($8));}
 		;
 
-params  : param 
-		| param COLUMN params
-		;
+params  : param {$$ = new List<ParamNode>; $$.add($1)}
+		| params COLUMN param
+		; {$$ = $1; $$.add($3);}
+//--^
+// Error: Syntax error, unexpected '{', expecting "%%", or anchoredSymbol, or EOF
+// ------------------------------------------------------------------------------
 
-param	: ident COLON ident
+param	: ident ident {$$ = new ParamNode($1, $2);}
 		;
 
 return	: RETURN expr | RETURN
@@ -149,7 +150,7 @@ func_call : ident LPAREN valueParams RPAREN
 		;
 
 valueParams : valueParam
-		| valueParam COLUMN valueParam
+		| valueParam COLUMN valueParams
 		| empty
 		;
 

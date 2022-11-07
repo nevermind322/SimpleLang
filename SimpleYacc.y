@@ -15,6 +15,7 @@
 			public ExprNode eVal;
 			public StatementNode stVal;
 			public BlockNode blVal;
+			public List<ParamNode> parList;
        }
 
 %using System.IO;
@@ -33,8 +34,9 @@
 
 %type <eVal> expr ident T F func_call valueParam
 %type <stVal> statement assign block cycle empty if return
-%type <stVal> declaration var_decl func_decl params param valueParams write
+%type <stVal> declaration var_decl func_decl param valueParams write
 %type <blVal> stlist block
+%type <parList> params
 
 %%
 
@@ -109,7 +111,7 @@ cycle	: CYCLE expr statement { $$ = new CycleNode($2,$3); }
 		;
 		
 declaration : var_decl	{$$ = $1;}
-		| func_decl		
+		| func_decl	{$$ = $1;}	
 		;
 
 var_decl : ident ident {$$ =  new VarNode($1 as IdNode, $2 as IdNode, null);}
@@ -117,13 +119,15 @@ var_decl : ident ident {$$ =  new VarNode($1 as IdNode, $2 as IdNode, null);}
 		;
 
 func_decl : FUN ident LPAREN params RPAREN COLON ident block
+			{$$ = new FuncNode($2 as IdNode, $4, $7 as IdNode,new FuncBodyNode($8));}
 		;
 
-params  : param 
-		| param COLUMN params
-		;
+params  : param {$$ = new List<ParamNode>(); $$.Add($1 as ParamNode);}
+		| params COLUMN param {$$ = $1; $$.Add($3 as ParamNode);}
+		| empty {$$ = new List<ParamNode>();}
+		; 
 
-param	: ident COLON ident
+param	: ident ident {$$ = new ParamNode($1 as IdNode, $2 as IdNode);}
 		;
 
 return	: RETURN expr | RETURN
@@ -133,7 +137,7 @@ func_call : ident LPAREN valueParams RPAREN
 		;
 
 valueParams : valueParam
-		| valueParam COLUMN valueParam
+		| valueParam COLUMN valueParams
 		| empty
 		;
 

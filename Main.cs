@@ -40,13 +40,19 @@ namespace SimpleCompiler
                     Console.WriteLine("Количество присваиваний = {0}", avis.Count);
                     Console.WriteLine("-------------------------------");
 
-                    var tc = new TypeCheckingVisitor();
-                    parser.root.Invite(tc);
-
+                       
+                   
                     var pp = new PrettyPrintVisitor();
                     parser.root.Invite(pp);
                     Console.WriteLine(pp.Text);
                     Console.WriteLine("-------------------------------");
+                    
+
+                    var scv = new SymbolCreatorVisitor();
+                    parser.root.Invite(scv); 
+                    
+                    var tc = new TypeCheckingVisitor();
+                    parser.root.Invite(tc);
 
                     var code = new GenCodeVisitor();
                     parser.root.Invite(code);

@@ -46,7 +46,7 @@ ID {Alpha}{AlphaDigit}*
 "%" {return (int) Tokens.MOD; }
 ":" {return (int) Tokens.COLON; }
 
-[^ \r\n] {
+[^ \t\r\n] {
 	LexError();
 }
 

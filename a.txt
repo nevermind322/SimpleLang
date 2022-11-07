@@ -1,4 +1,8 @@
 begin
-    double b = 3.22 ;
-    write(b);
+
+int a = 2;
+
+cycle 3 a = a + 1;
+write(a);
+
 end

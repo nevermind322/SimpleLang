@@ -25,5 +25,10 @@ namespace SimpleLang.Visitors
         public abstract void VisitVarNode(VarNode vn);
         public abstract void VisitFuncNode(FuncNode fn);
 
+        public abstract void VisitParamNode(ParamNode pn);
+
+        public abstract void VisitFuncBodyNode(FuncBodyNode fbn);
+
+
     }
 }

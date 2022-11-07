@@ -1,17 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using ProgramTree;
 using System.Reflection.Emit;
 using SimpleParser;
-using System.Dynamic;
+
 
 namespace SimpleLang.Visitors
 {
     class GenCodeVisitor: Visitor
     {
-        private Dictionary<string, LocalBuilder> vars = new Dictionary<string, LocalBuilder>();
         private GenCodeCreator genc;
 
         public GenCodeVisitor()
@@ -22,7 +18,24 @@ namespace SimpleLang.Visitors
         {
             // Этот Visit не вызывается если переменная стоит слева от оператора присваивания !
             // Т.е. он вызывается только если id находится в выражении, а значит, мы просто кладем его значение на стек!
-            genc.Emit(OpCodes.Ldloc, vars[id.Name]);
+            
+            var si = SymbolTableStack.findSymbol(id.Name, true);
+
+            switch (si.kind)
+            {
+                case (SymbolTable.SymbolInfo.Kind.VAR):
+                {
+                    var v_si = si as SymbolTable.VarInfo;
+                    genc.Emit(OpCodes.Ldloc, v_si.addr);
+                    break;
+                }
+                case (SymbolTable.SymbolInfo.Kind.FUNCTION):
+                    {
+                        break;
+                    }
+            }
+
+            
         }
         public override void VisitRealNumNode(RealNumNode num)
         {
@@ -37,33 +50,34 @@ namespace SimpleLang.Visitors
 
         public override void VisitVarNode(VarNode vn)
         {   TYPE id_type = vn.name.type;
-
+            LocalBuilder addr;
+            if(id_type == TYPE.INT) 
+                addr = genc.DeclareLocal(typeof(int));
+            else
+                addr = genc.DeclareLocal(typeof(double));
+            
+            SymbolTableStack.allocate(vn.name.Name, addr);
+            
             if (vn.valExpr != null)
             {
-                
                 vn.valExpr.Invite(this);
                 TYPE expr_type = vn.valExpr.type;
                 if (id_type == TYPE.INT && expr_type == TYPE.DOUBLE)
                     throw new SyntaxException("Невозможно привести double к  int");
                 else if (id_type != TYPE.INT)
                 {   
-                    
-                    if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);
-                    vars[vn.name.Name] = genc.DeclareLocal(typeof(double));
-                }
-                
-                else vars[vn.name.Name] = genc.DeclareLocal(typeof(int));
-                genc.Emit(OpCodes.Stloc, vars[vn.name.Name]);
+                    if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);   
+                }   
+                genc.Emit(OpCodes.Stloc, addr);
+                SymbolTableStack.init(vn.name.Name);
                 
             }
-            else if(id_type == TYPE.INT) 
-                vars[vn.name.Name] = genc.DeclareLocal(typeof(int));
-            else vars[vn.name.Name] = genc.DeclareLocal(typeof(double));
+            
         }
 
         public override void VisitFuncNode(FuncNode fn)
         {
-            throw new NotImplementedException();
+            
         }
         public override void VisitIntNumNode(IntNumNode num) 
         {
@@ -114,9 +128,24 @@ namespace SimpleLang.Visitors
             {
                 if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);
             }
+            var si = SymbolTableStack.findSymbol(a.Id.Name, true);
+
+            switch (si.kind)
+            {
+                case (SymbolTable.SymbolInfo.Kind.VAR):
+                    {
+                        var v_si = si as SymbolTable.VarInfo;
+                        genc.Emit(OpCodes.Stloc, v_si.addr);
+                        SymbolTableStack.init(a.Id.Name);
+                        break;
+                    }
+                case (SymbolTable.SymbolInfo.Kind.FUNCTION):
+                    {
+                        break;
+                    }
+            }
+
             
-        
-            genc.Emit(OpCodes.Stloc, vars[a.Id.Name]);
         }
         public override void VisitCycleNode(CycleNode c) 
         {
@@ -161,6 +190,7 @@ namespace SimpleLang.Visitors
             Label then = genc.DefineLabel();
             Label _else = genc.DefineLabel();
             Label endif = genc.DefineLabel();
+            
             genc.Emit(OpCodes.Blt, then);
             if (w._else != null) genc.Emit(OpCodes.Br, _else);
             genc.Emit(OpCodes.Br, endif);
@@ -194,6 +224,16 @@ namespace SimpleLang.Visitors
         {
             wr.Expr.Invite(this);
             genc.EmitWriteLine(wr.Expr.type);
+        }
+
+        public override void VisitParamNode(ParamNode pn)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void VisitFuncBodyNode(FuncBodyNode fbn)
+        {
+            throw new NotImplementedException();
         }
     }
 }

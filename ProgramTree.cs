@@ -16,7 +16,7 @@ namespace ProgramTree
 
     public abstract class ExprNode : Node // базовый класс для всех выражений
     {
-  
+
         public TYPE type;
     }
 
@@ -73,7 +73,7 @@ namespace ProgramTree
         public ExprNode Left { get; set; }
         public ExprNode Right { get; set; }
         public char Op { get; set; }
-        public BinOpNode(ExprNode Left, ExprNode Right, char op) 
+        public BinOpNode(ExprNode Left, ExprNode Right, char op)
         {
             this.Left = Left;
             this.Right = Right;
@@ -125,9 +125,9 @@ namespace ProgramTree
     {
         public ExprNode expr { get; set; }
         public StatementNode then { get; set; }
-        public StatementNode _else {get; set;}
+        public StatementNode _else { get; set; }
 
-        public IfNode(ExprNode ex, StatementNode t,StatementNode el) {
+        public IfNode(ExprNode ex, StatementNode t, StatementNode el) {
             expr = ex;
             then = t;
             _else = el;
@@ -141,6 +141,7 @@ namespace ProgramTree
     public class BlockNode : StatementNode
     {
         public List<StatementNode> StList = new List<StatementNode>();
+        public SymbolTable table = new SymbolTable();
         public BlockNode(StatementNode stat)
         {
             Add(stat);
@@ -151,11 +152,13 @@ namespace ProgramTree
         }
         public override void Invite(Visitor v)
         {
+            SymbolTableStack.push(table);
             v.VisitBlockNode(this);
+            SymbolTableStack.pop();
         }
     }
 
-  
+
 
     public class EmptyNode : StatementNode
     {
@@ -167,15 +170,15 @@ namespace ProgramTree
 
     public abstract class DeclarationNode : StatementNode
     {
-        public enum Kind {FUNCTION, VAR }
+        public enum Kind { FUNCTION, VAR }
 
-        
-        public  IdNode name;
+
+        public IdNode name;
         public Kind kind;
 
-        protected DeclarationNode(IdNode n, Kind k )
+        protected DeclarationNode(IdNode n, Kind k)
         {
-            
+
             name = n;
             kind = k;
         }
@@ -189,7 +192,6 @@ namespace ProgramTree
         {
             valExpr = expr;
             typeId = t;
-            SymbolTable.Add(this);
         }
 
         public override void Invite(Visitor v)
@@ -199,11 +201,16 @@ namespace ProgramTree
     }
 
     public class FuncNode : DeclarationNode
-    {  
-        public FuncType type;
-        public FuncNode(IdNode n) : base( n, Kind.FUNCTION)
+    {
+        public FuncBodyNode body;
+        public List<ParamNode> _params;
+        public IdNode returnTypeId;
+        public FuncNode(IdNode n,List<ParamNode> p ,IdNode r, FuncBodyNode body) : base(n, Kind.FUNCTION)
         {
-            
+            _params = p;
+            this.body = body;
+            this.body._params = _params;
+            returnTypeId = r;
         }
 
         public override void Invite(Visitor v)
@@ -211,6 +218,33 @@ namespace ProgramTree
             v.VisitFuncNode(this);
         }
     }
+    public class ParamNode : VarNode
+    {
+        public ParamNode(IdNode t, IdNode n) : base(t, n, null)
+        {
 
-    
+        }
+
+        public override void Invite(Visitor v)
+        {
+            v.VisitParamNode(this);
+        }
+    }
+
+    public class FuncBodyNode : BlockNode
+    {
+        public List<ParamNode> _params; 
+        public FuncBodyNode(BlockNode b) : base(null)
+        {
+            table = b.table;
+            StList = b.StList;
+        }
+
+        public override void Invite(Visitor v)
+        {
+            v.VisitFuncBodyNode(this);
+        }
+    }
+
+
 }

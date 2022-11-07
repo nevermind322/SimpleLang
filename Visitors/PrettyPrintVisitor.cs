@@ -114,7 +114,15 @@ namespace SimpleLang.Visitors
 
         public override void VisitFuncNode(FuncNode fn)
         {
+            Text += IndentStr() + "fun " + fn.name.Name + "(";
+            foreach (var param in fn._params) { 
+                param.Invite(this);
+                Text += ", ";    
+            }
             
+            Text += ") : " + fn.returnTypeId.Name + "\n";
+            fn.body.Invite(this);
+
         }
 
         public override void VisitWriteNode(WriteNode wr)
@@ -122,6 +130,16 @@ namespace SimpleLang.Visitors
             Text += IndentStr() + "Write(";
             wr.Expr.Invite(this);
             Text += ")";
+        }
+
+        public override void VisitParamNode(ParamNode pn)
+        {
+            Text += pn.typeId.Name + " " + pn.name.Name;
+        }
+
+        public override void VisitFuncBodyNode(FuncBodyNode fbn)
+        {
+            VisitBlockNode(fbn);
         }
     }
 }
