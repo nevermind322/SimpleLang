@@ -16,8 +16,7 @@ namespace ProgramTree
 
     public abstract class ExprNode : Node // базовый класс для всех выражений
     {
-
-        public TYPE type;
+      public TYPE type;
     }
 
     public class IdNode : ExprNode
@@ -45,6 +44,7 @@ namespace ProgramTree
 
     public class IntNumNode : ExprNode
     {
+      
         public int Num { get; set; }
         public IntNumNode(int num) { Num = num; type = TYPE.INT; }
         public override void Invite(Visitor v)
@@ -55,12 +55,12 @@ namespace ProgramTree
 
     public class RealNumNode : ExprNode
     {
+       
         public RealNumNode(double value)
         {
             Value = value;
             type = TYPE.DOUBLE;
         }
-
         public double Value { get; set; }
         public override void Invite(Visitor v)
         {
@@ -141,7 +141,7 @@ namespace ProgramTree
     public class BlockNode : StatementNode
     {
         public List<StatementNode> StList = new List<StatementNode>();
-        public SymbolTable table = new SymbolTable();
+        public SymbolTable table ;
         public BlockNode(StatementNode stat)
         {
             Add(stat);
@@ -152,9 +152,7 @@ namespace ProgramTree
         }
         public override void Invite(Visitor v)
         {
-            SymbolTableStack.push(table);
-            v.VisitBlockNode(this);
-            SymbolTableStack.pop();
+            v.VisitBlockNode(this);    
         }
     }
 
@@ -172,13 +170,11 @@ namespace ProgramTree
     {
         public enum Kind { FUNCTION, VAR }
 
-
         public IdNode name;
         public Kind kind;
 
         protected DeclarationNode(IdNode n, Kind k)
         {
-
             name = n;
             kind = k;
         }
@@ -209,7 +205,7 @@ namespace ProgramTree
         {
             _params = p;
             this.body = body;
-            this.body._params = _params;
+            
             returnTypeId = r;
         }
 
@@ -220,10 +216,7 @@ namespace ProgramTree
     }
     public class ParamNode : VarNode
     {
-        public ParamNode(IdNode t, IdNode n) : base(t, n, null)
-        {
-
-        }
+        public ParamNode(IdNode t, IdNode n) : base(t, n, null) {}
 
         public override void Invite(Visitor v)
         {
@@ -233,11 +226,11 @@ namespace ProgramTree
 
     public class FuncBodyNode : BlockNode
     {
-        public List<ParamNode> _params; 
+       
         public FuncBodyNode(BlockNode b) : base(null)
         {
-            table = b.table;
-            StList = b.StList;
+            table  =  b.table;
+            StList =  b.StList;
         }
 
         public override void Invite(Visitor v)
@@ -245,6 +238,4 @@ namespace ProgramTree
             v.VisitFuncBodyNode(this);
         }
     }
-
-
 }

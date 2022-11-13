@@ -8,7 +8,7 @@ namespace SimpleLang.Visitors
     {
         public override void VisitIdNode(IdNode id)
         {
-            SymbolTable.SymbolInfo si = SymbolTableStack.findSymbol(id.Name);
+            SymbolTable.SymbolInfo si = top.find(id.Name);
             if (si.kind != SymbolTable.SymbolInfo.Kind.FUNCTION)
             {
                 var var_si = si as SymbolTable.VarInfo;

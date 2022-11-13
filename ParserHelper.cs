@@ -6,109 +6,128 @@ using System.Reflection.Emit;
 
 namespace SimpleParser
 {
-    public class FuncType { }
-    public enum TYPE { INT, DOUBLE, VOID}
+    public class FuncType
+    {
+        List<TYPE> params_type = new List<TYPE>();
+        public TYPE return_type;
 
-    public static class SymbolTableStack {
-
-        static List<SymbolTable> stack = new List<SymbolTable>();
-        
-        static SymbolTable get() { return stack.Last(); } 
-
-        public static void push(SymbolTable table) {
-            stack.Add(table);    
-        }
-
-        public static bool pop()
+        public FuncType()
         {
-            if (stack.Count > 0)
-            {
-                stack.RemoveAt(stack.Count - 1);
-                return true;
-            }
-            return false;
         }
 
-        public static void  addInfo(DeclarationNode dec) {
-            get().Add(dec);
-        }
-
-        public static SymbolTable.SymbolInfo findSymbol(string name, bool needAllocated = false) {
-
-            SymbolTable.SymbolInfo res = null;
-
-            int i = stack.Count - 1;
-            while(i >= 0 && res == null) {
-                res = stack[i].Get(name);
-                if (needAllocated && res != null && !res.allocated) res = null;
-                i--;
-            }
-            if (res != null) return res;
-            throw new SyntaxException(name + " не объявлена");
-        }
-
-        public static void allocate(string name,LocalBuilder addr) { 
-            var si = findSymbol(name);
-            switch (si.kind)
-            {
-                case (SymbolTable.SymbolInfo.Kind.VAR):
-                {
-                        var v_si = si as SymbolTable.VarInfo;
-                        v_si.addr = addr;
-                        v_si.allocated = true;
-                        break;
-
-                }
-                case (SymbolTable.SymbolInfo.Kind.FUNCTION):
-                {
-                    break;
-                }
-            }
-        }
-
-        public static void init(string name)
+        public void addParamType(TYPE t)
         {
-            var si = findSymbol(name, true);
-            si.initialized = true;
+            params_type.Add(t);
         }
     }
+    public enum TYPE { INT, DOUBLE, VOID }
 
-    public  class SymbolTable {
+    public class SymbolTable
+    {
 
-        
+        private Dictionary<string, SymbolInfo> table = new Dictionary<string, SymbolInfo>();
 
-        private  Dictionary<string, SymbolInfo> table = new Dictionary<string, SymbolInfo>();
+        public SymbolTable prev;
 
-        public  void Add(DeclarationNode dec) { 
-            
-            switch (dec.kind)
-            {
-                case DeclarationNode.Kind.FUNCTION:
-                    {
-                        addFuncInfo(dec as FuncNode);
-                        break;
-                    }
-                case DeclarationNode.Kind.VAR: {     
-                        addVarInfo(dec as VarNode);  
-                        break;
-                    }
-            }
+        public SymbolTable() { }
+        public SymbolTable(SymbolTable prev)
+        {
+            this.prev = prev;
         }
 
-        public  SymbolInfo Get(string id) {
-            if (table.ContainsKey(id)) { 
-                return table[id];
+        public SymbolInfo find(string name)
+        {
+            SymbolInfo res = null;
+            for (var t = this; t != null; t = t.prev)
+            {
+                if (table.TryGetValue(name, out res)) return res;
             }
             return null;
         }
 
-        private  void addFuncInfo(FuncNode fn) { 
-            throw new NotImplementedException();
+        public void Add(FuncNode dec)
+        {
+            addFuncInfo(dec as FuncNode);
         }
 
-        private  void addVarInfo(VarNode vn) {
+        public void Add(VarNode dec)
+        {
+            addVarInfo(dec);
+        }
+
+
+        private void addFuncInfo(FuncNode fn)
+        {
+            var ft = new FuncType();
+            TYPE t;
+            foreach (var param in fn._params)
+            {
+                switch (param.typeId.Name)
+                {
+                    
+                    case "double":
+                        {
+                            t = TYPE.DOUBLE;
+                            break;
+                        }
+                    case "int":
+                        {
+                            t = TYPE.INT;
+                            break;
+                        }
+                    case "void":
+                        {
+                            throw new SyntaxException("параметр не может быть void");
+                        }
+                    default:
+                        {
+                            throw new SyntaxException("Неизвестный тип");
+                        }
+                }
+                ft.addParamType(t);
+
+            }
+            switch (fn.returnTypeId.Name)
+                {
+                    
+                    case "double":
+                        {
+                            t = TYPE.DOUBLE;
+                            break;
+                        }
+                    case "int":
+                        {
+                            t = TYPE.INT;
+                            break;
+                        }
+                    case "void":
+                        {
+                           t = TYPE.VOID;
+                           break;
+                        }
+                    default:
+                        {
+                            throw new SyntaxException("Неизвестный тип");
+                        }
+                }
+            ft.return_type = t;
+            FunctionInfo info = new FunctionInfo(ft, fn.name.Name);
+            SimpleLang.Visitors.SymbolTableCreatorVisitor table_creator = new  SimpleLang.Visitors.SymbolTableCreatorVisitor();
+            foreach (var param in fn._params)
+            {
+                fn.body.table.Add(param);
+            }
+            fn.body.Invite(table_creator);
+            info.BodyTable = fn.body.table;
+            table.Add(fn.name.Name, info);
+
+        }
+
+        private void addVarInfo(VarNode vn)
+        {
             TYPE type;
-            switch (vn.typeId.Name) {
+            switch (vn.typeId.Name)
+            {
                 case "double":
                     {
                         type = TYPE.DOUBLE;
@@ -124,16 +143,17 @@ namespace SimpleParser
                         throw new SyntaxException("переменная не может быть void");
                     }
                 default:
-                {
-                     throw new SyntaxException("Неизвестный тип");
-                }
+                    {
+                        throw new SyntaxException("Неизвестный тип");
+                    }
             }
             var info = new VarInfo(type, vn.name.Name);
             table.Add(vn.name.Name, info);
-        } 
+        }
 
-        public class SymbolInfo {
-            public enum Kind { FUNCTION, VAR}
+        public class SymbolInfo
+        {
+            public enum Kind { FUNCTION, VAR }
             public Kind kind;
             public string name;
             public bool allocated = false;
@@ -141,10 +161,12 @@ namespace SimpleParser
             public SymbolInfo(Kind k, string n) { kind = k; name = n; }
         }
 
-        public class FunctionInfo : SymbolInfo { 
-            
+        public class FunctionInfo : SymbolInfo
+        {
+
             public FuncType type;
-            public FunctionInfo(FuncType t, string n) : base(Kind.FUNCTION ,n)
+            public SymbolTable BodyTable;
+            public FunctionInfo(FuncType t, string n) : base(Kind.FUNCTION, n)
             {
                 type = t;
             }
@@ -154,10 +176,10 @@ namespace SimpleParser
         {
             public TYPE type;
             public LocalBuilder addr;
-            public VarInfo(TYPE type, string n) : base(Kind.VAR ,n)
+            public VarInfo(TYPE type, string n) : base(Kind.VAR, n)
             {
                 this.type = type;
-                
+
             }
         }
     }
@@ -166,7 +188,7 @@ namespace SimpleParser
     {
         public LexException(string msg) : base(msg) { }
     }
-    
+
     public class SyntaxException : Exception
     {
         public SyntaxException(string msg) : base(msg) { }

@@ -17,11 +17,11 @@ namespace SimpleCompiler
         public static void Main()
         {
            
-            string FileName = @"..\..\a.txt";
-
+            string FileName = @"a.txt";
             try
             {
                 string Text = File.ReadAllText(FileName);
+                
 
                 Scanner scanner = new Scanner();
                 scanner.SetSource(Text, 0);
@@ -48,8 +48,7 @@ namespace SimpleCompiler
                     Console.WriteLine("-------------------------------");
                     
 
-                    var scv = new SymbolCreatorVisitor();
-                    parser.root.Invite(scv); 
+               
                     
                     var tc = new TypeCheckingVisitor();
                     parser.root.Invite(tc);

@@ -11,6 +11,7 @@ namespace SimpleLang.Visitors
     // При переопределении методов для задания действий необходимо не забывать обходить подузлы
     class AutoVisitor: Visitor
     {
+        protected SimpleParser.SymbolTable top ;
         public override void VisitBinOpNode(BinOpNode binop) 
         {
             binop.Left.Invite(this);
@@ -29,6 +30,7 @@ namespace SimpleLang.Visitors
         }
         public override void VisitBlockNode(BlockNode bl) 
         {
+            top = bl.table;
             if (bl.StList.Count > 0 && bl.StList != null)
             {
                 foreach (var st in bl.StList)

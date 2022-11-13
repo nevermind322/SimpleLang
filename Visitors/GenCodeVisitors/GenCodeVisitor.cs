@@ -6,7 +6,7 @@ using SimpleParser;
 
 namespace SimpleLang.Visitors
 {
-    class GenCodeVisitor: Visitor
+    class GenCodeVisitor: AutoVisitor
     {
         private GenCodeCreator genc;
 
@@ -19,7 +19,7 @@ namespace SimpleLang.Visitors
             // Этот Visit не вызывается если переменная стоит слева от оператора присваивания !
             // Т.е. он вызывается только если id находится в выражении, а значит, мы просто кладем его значение на стек!
             
-            var si = SymbolTableStack.findSymbol(id.Name, true);
+            var si = top.find(id.Name);
 
             switch (si.kind)
             {
@@ -43,10 +43,7 @@ namespace SimpleLang.Visitors
             
         }
 
-        public override void VisitEmptyNode(EmptyNode w)
-        {
-            
-        }
+        
 
         public override void VisitVarNode(VarNode vn)
         {   TYPE id_type = vn.name.type;
@@ -56,7 +53,7 @@ namespace SimpleLang.Visitors
             else
                 addr = genc.DeclareLocal(typeof(double));
             
-            SymbolTableStack.allocate(vn.name.Name, addr);
+            
             
             if (vn.valExpr != null)
             {
@@ -69,7 +66,7 @@ namespace SimpleLang.Visitors
                     if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);   
                 }   
                 genc.Emit(OpCodes.Stloc, addr);
-                SymbolTableStack.init(vn.name.Name);
+                
                 
             }
             
@@ -128,7 +125,7 @@ namespace SimpleLang.Visitors
             {
                 if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);
             }
-            var si = SymbolTableStack.findSymbol(a.Id.Name, true);
+            var si = top.find(a.Id.Name);
 
             switch (si.kind)
             {
@@ -136,7 +133,7 @@ namespace SimpleLang.Visitors
                     {
                         var v_si = si as SymbolTable.VarInfo;
                         genc.Emit(OpCodes.Stloc, v_si.addr);
-                        SymbolTableStack.init(a.Id.Name);
+                      
                         break;
                     }
                 case (SymbolTable.SymbolInfo.Kind.FUNCTION):
@@ -173,15 +170,6 @@ namespace SimpleLang.Visitors
 
             genc.MarkLabel(endLoop);
         }
-        public override void VisitBlockNode(BlockNode bl) 
-        {
-            foreach (var st in bl.StList)
-                st.Invite(this);
-        }
-        
-
-        
-
         public override void VisitIfNode(IfNode w)
         {
             genc.Emit(OpCodes.Ldc_I4, 0);
