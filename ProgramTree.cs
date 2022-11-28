@@ -14,9 +14,15 @@ namespace ProgramTree
         public abstract void Invite(Visitor v);
     }
 
+    public class FuncCallStmntNode : StatementNode {
+        public FuncCallNode call;
+        public FuncCallStmntNode(FuncCallNode c) { call = c; }
+        public override void Invite(Visitor v) { v.VisitFuncCallStmntNode(this); }
+    }
+
     public abstract class ExprNode : Node // базовый класс для всех выражений
     {
-      public TYPE type;
+        public TYPE type;
     }
 
     public class IdNode : ExprNode
@@ -44,7 +50,7 @@ namespace ProgramTree
 
     public class IntNumNode : ExprNode
     {
-      
+
         public int Num { get; set; }
         public IntNumNode(int num) { Num = num; type = TYPE.INT; }
         public override void Invite(Visitor v)
@@ -55,7 +61,7 @@ namespace ProgramTree
 
     public class RealNumNode : ExprNode
     {
-       
+
         public RealNumNode(double value)
         {
             Value = value;
@@ -68,12 +74,25 @@ namespace ProgramTree
         }
     }
 
+    public class BoolNode : ExprNode
+    {
+        public bool value;
+        public BoolNode(bool value)
+        {
+            this.value = value;
+        }
+        public override void Invite(Visitor v)
+        {
+            v.VisitBoolNode(this);
+        }
+    }
+
     public class BinOpNode : ExprNode
     {
         public ExprNode Left { get; set; }
         public ExprNode Right { get; set; }
-        public char Op { get; set; }
-        public BinOpNode(ExprNode Left, ExprNode Right, char op)
+        public string Op { get; set; }
+        public BinOpNode(ExprNode Left, ExprNode Right, string op)
         {
             this.Left = Left;
             this.Right = Right;
@@ -85,8 +104,59 @@ namespace ProgramTree
         }
     }
 
+    public class BoolBinOpNode : BinOpNode
+    {
+        public BoolBinOpNode(ExprNode Left, ExprNode Right, string op) : base(Left, Right, op)
+        {
+            type = TYPE.BOOL;
+        }
+        public override void Invite(Visitor v)
+        {
+            v.VisitBoolBinOpNode(this);
+        }
+    }
+
+    public class LogicBinOpNode : BinOpNode
+    {
+        public LogicBinOpNode(ExprNode Left, ExprNode Right, string op) : base(Left, Right, op)
+        {
+            type = TYPE.BOOL;
+        }
+        public override void Invite(Visitor v)
+        {
+            v.VisitLogicBinOpNode(this);
+        }
+    }
+
+    public class UnaryOpNode : ExprNode
+    {
+        public ExprNode expr;
+        public string op;
+        public UnaryOpNode(ExprNode expr, string op)
+        {
+            this.expr = expr;
+            this.op = op;
+        }
+
+        public override void Invite(Visitor v)
+        {
+            v.VisitUnaryOpNode(this);
+        }
+    }
     public abstract class StatementNode : Node // базовый класс для всех операторов
     {
+    }
+
+    public class ReturnNode : StatementNode {
+        public ExprNode retExpr;
+        public ReturnNode(ExprNode expr) {
+            retExpr = expr; 
+        }
+
+        public override void Invite(Visitor v)
+        {
+            v.VisitReturnNode(this);
+        }
     }
 
     public class AssignNode : StatementNode
@@ -216,6 +286,8 @@ namespace ProgramTree
     }
     public class ParamNode : VarNode
     {
+        internal int pos;
+
         public ParamNode(IdNode t, IdNode n) : base(t, n, null) {}
 
         public override void Invite(Visitor v)
@@ -237,5 +309,23 @@ namespace ProgramTree
         {
             v.VisitFuncBodyNode(this);
         }
+    }
+
+    public class FuncCallNode : ExprNode
+    {
+        public IdNode id;
+        public List<ExprNode> args;
+
+        public FuncCallNode(IdNode id, List<ExprNode> args)
+        {
+            this.id = id;
+            this.args = args;
+        }
+    
+        public override void Invite(Visitor v)
+        {
+            v.VisitFuncCallNode(this);
+        }
+
     }
 }

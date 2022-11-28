@@ -45,7 +45,15 @@ ID {Alpha}{AlphaDigit}*
 "//" { return (int)Tokens.DIVI;}
 "%" {return (int) Tokens.MOD; }
 ":" {return (int) Tokens.COLON; }
-
+"<" {return (int) Tokens.L; }
+"<=" {return (int) Tokens.LE; }
+">" {return (int) Tokens.G; }
+">=" {return (int) Tokens.GE; }
+"==" {return (int) Tokens.EQ; }
+"!=" {return (int) Tokens.NEQ; }
+"&&" {return (int) Tokens.AND; }
+"||" {return (int) Tokens.OR; }
+"!" {return (int) Tokens.NOT; }
 [^ \t\r\n] {
 	LexError();
 }
@@ -79,13 +87,18 @@ class ScannerHelper
     keywords.Add("begin",(int)Tokens.BEGIN);
     keywords.Add("end",(int)Tokens.END);
     keywords.Add("cycle",(int)Tokens.CYCLE);
+    keywords.Add("while",(int)Tokens.WHILE);
+    keywords.Add("for",(int)Tokens.FOR);
     keywords.Add("var",(int)Tokens.VAR);
     keywords.Add("if",(int)Tokens.IF);
     keywords.Add("then",(int)Tokens.THEN);
     keywords.Add("else",(int)Tokens.ELSE);
-     keywords.Add("write",(int)Tokens.WRITE);
+    keywords.Add("write",(int)Tokens.WRITE);
     keywords.Add("fun",(int)Tokens.FUN);
     keywords.Add("return",(int)Tokens.RETURN);
+    keywords.Add("true",(int)Tokens.TRUE);
+    keywords.Add("false",(int)Tokens.FALSE);
+
 
 
   }

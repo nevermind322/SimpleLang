@@ -9,13 +9,15 @@
 
 %union { 
 			public double dVal; 
-			public int iVal; 
+			public int iVal;
+			public bool bVal;
 			public string sVal; 
 			public Node nVal;
 			public ExprNode eVal;
 			public StatementNode stVal;
 			public BlockNode blVal;
 			public List<ParamNode> parList;
+			public List<ExprNode> exprList;
        }
 
 %using System.IO;
@@ -26,17 +28,20 @@
 %start progr
 
 %token BEGIN END CYCLE ASSIGN ASSIGNPLUS ASSIGNMINUS ASSIGNMULT SEMICOLON VAR PLUS MINUS MULT DIV LPAREN RPAREN COLUMN DIVI MOD IF THEN ELSE FUN
-%token COLON RETURN WRITE
+%token COLON RETURN WRITE WHILE FOR FALSE TRUE L, LE, G, GE, EQ, NEQ OR AND NOT
 %token <iVal> INUM 
 %token <dVal> RNUM 
 %token <sVal> ID 
 
 
-%type <eVal> expr ident T F func_call valueParam
-%type <stVal> statement assign block cycle empty if return
-%type <stVal> declaration var_decl func_decl param valueParams write
-%type <blVal> stlist 
+
+%type <eVal> expr ident T F func_call valueParam bool_expr logic_expr
+%type <stVal> statement assign  cycle empty if return  while
+%type <stVal> declaration var_decl func_decl param write loop
+%type <blVal> stlist block
 %type <parList> params
+%type <exprList> valueParams
+%type <bVal> bool_literal
 
 %%
 
@@ -57,12 +62,13 @@ stlist	:
 
 statement: assign { $$ = $1; }
 		| block   { $$ = $1; }
-		| cycle   { $$ = $1; }
+		| loop  { $$ = $1; }
 		| declaration {$$ = $1;}
 		| if      { $$ = $1; }
 		| return  {$$ = $1;}
 		| write   {$$ = $1;}
 		| empty   { $$ = $1; }
+		| func_call {$$ = new FuncCallStmntNode($1 as FuncCallNode); }
 		;
 
 empty	: { $$ = new EmptyNode(); }
@@ -71,26 +77,35 @@ empty	: { $$ = new EmptyNode(); }
 write	: WRITE LPAREN expr RPAREN { $$ = new WriteNode($3); }
 		;
 
-ident 	: ID 
-		{
-			
-			$$ = new IdNode($1); 
-		}	
+ident 	: ID {$$ = new IdNode($1);}	
 	;
 	
 assign 	: ident ASSIGN expr { $$ = new AssignNode($1 as IdNode, $3); }
 		;
 
-expr	: expr PLUS T { $$ = new BinOpNode($1,$3,'+'); }
-		| expr MINUS T { $$ = new BinOpNode($1,$3,'-'); }
-		| T { $$ = $1; }
+expr	: expr PLUS T { $$ = new BinOpNode($1,$3,"+"); }
+		| expr MINUS T { $$ = new BinOpNode($1,$3,"-"); }
+		| logic_expr  { $$ = $1; }
 		;
-		
-T 		: T MULT F { $$ = new BinOpNode($1,$3,'*'); }
-		| T DIV F { $$ = new BinOpNode($1,$3,'/'); }
-		| T MOD F {$$ = new BinOpNode($1,$3,'%');}
-		| T DIVI F {$$ = new BinOpNode($1,$3,'\\');}
+logic_expr : T OR F{$$ = new LogicBinOpNode($1, $3, "||");}
+		| T AND F {$$ = new LogicBinOpNode($1, $3, "&&");}
+		| NOT T {$$ = new UnaryOpNode($2, "!");}
+		| T {$$ = $1;}
+		;
+
+bool_expr	: T L F {$$ = new BoolBinOpNode($1, $3, "<");}
+		| T LE F {$$ = new BoolBinOpNode($1, $3, "<=");}
+		| T G F {$$ = new BoolBinOpNode($1, $3, ">");}
+		| T GE F {$$ = new BoolBinOpNode($1, $3, ">=");}
+		| T EQ F {$$ = new BoolBinOpNode($1, $3, "==");}
+		| T NEQ F {$$ = new BoolBinOpNode($1, $3, "!=");}
+		;
+T 		: T MULT F { $$ = new BinOpNode($1,$3,"*"); }
+		| T DIV F { $$ = new BinOpNode($1,$3,"/"); }
+		| T MOD F {$$ = new BinOpNode($1,$3,"%");}
+		| T DIVI F {$$ = new BinOpNode($1,$3,"//");}
 		| F { $$ = $1; }
+		| bool_expr {$$ = $1;}
 		;
 		
 F 		: ident  { $$ = $1 as IdNode; }
@@ -98,18 +113,27 @@ F 		: ident  { $$ = $1 as IdNode; }
 		| RNUM {$$ = new RealNumNode($1);}
 		| LPAREN expr RPAREN { $$ = $2; }
 		| func_call {$$ = $1;}
+		| bool_literal {$$ = new BoolNode($1);}
 		;
 
+bool_literal :TRUE {$$ = true;}| FALSE {$$ = false;}
+		;
 block	: BEGIN stlist END { $$ = $2; }
 		;
-
+		
 if		: IF expr THEN statement {$$  = new IfNode($2, $4, null);}
 		| IF expr THEN statement ELSE statement	{$$ = new IfNode($2, $4, $6);}
 		;
 
+loop	: cycle {$$ = $1;} | while {$$ =$1;} 
+		;
+
 cycle	: CYCLE expr statement { $$ = new CycleNode($2,$3); }
 		;
-		
+
+while	: WHILE LPAREN expr RPAREN statement
+		;
+
 declaration : var_decl	{$$ = $1;}
 		| func_decl	{$$ = $1;}	
 		;
@@ -130,18 +154,18 @@ params  : param {$$ = new List<ParamNode>(); $$.Add($1 as ParamNode);}
 param	: ident ident {$$ = new ParamNode($1 as IdNode, $2 as IdNode);}
 		;
 
-return	: RETURN expr | RETURN
+return	: RETURN expr {$$ = new ReturnNode($2);}| RETURN {$$ = new ReturnNode(null);}
 		;
 
-func_call : ident LPAREN valueParams RPAREN
+func_call : ident LPAREN valueParams RPAREN {$$ = new FuncCallNode($1 as IdNode, $3);}
 		;
 
-valueParams : valueParam
-		| valueParam COLUMN valueParams
-		| empty
+valueParams : valueParam {$$ = new List<ExprNode>(); $$.Add($1);}
+		| valueParams COLUMN valueParam {$$ = $1; $$.Add($3);}
+		| empty {$$ = new List<ExprNode>();}
 		;
 
-valueParam : expr 
+valueParam : expr {$$ = $1;}
 		;
 
 %%

@@ -1,13 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using System.Reflection;
-using System.Collections.Generic;
 using SimpleScanner;
 using SimpleParser;
 using SimpleLang.Visitors;
-using System.Xml.Linq;
-using ProgramTree;
 
 namespace SimpleCompiler
 {
@@ -21,7 +16,6 @@ namespace SimpleCompiler
             try
             {
                 string Text = File.ReadAllText(FileName);
-                
 
                 Scanner scanner = new Scanner();
                 scanner.SetSource(Text, 0);
@@ -34,7 +28,9 @@ namespace SimpleCompiler
                 else
                 {
                     Console.WriteLine("Синтаксическое дерево построено");
-
+                    var table_creator = new SymbolTableCreatorVisitor();
+                    parser.root.Invite(table_creator);
+                    
                     var avis = new AssignCountVisitor();
                     parser.root.Invite(avis);
                     Console.WriteLine("Количество присваиваний = {0}", avis.Count);
@@ -46,9 +42,8 @@ namespace SimpleCompiler
                     parser.root.Invite(pp);
                     Console.WriteLine(pp.Text);
                     Console.WriteLine("-------------------------------");
-                    
 
-               
+                    
                     
                     var tc = new TypeCheckingVisitor();
                     parser.root.Invite(tc);

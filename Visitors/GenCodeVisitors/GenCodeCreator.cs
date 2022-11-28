@@ -14,15 +14,45 @@ namespace SimpleLang.Visitors
         private bool write_commands = true;
         private static MethodInfo writeLineInt = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(int) });
         private static MethodInfo writeLineDouble = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(double) });
-
+        private static MethodInfo writeLineString = typeof(Console).GetMethod("WriteLine", new Type[] { typeof(string) });
 
         public List<string> commands = new List<string>();
+        private List<Type> @params;
+        private Type ret;
 
         public GenCodeCreator()
         {
             dyn = new DynamicMethod("My", null, null, typeof(void));
             gen = dyn.GetILGenerator();
+        }
+
+        public GenCodeCreator(List<Type> @params, Type ret)
+        {
+            this.@params = @params;
+            this.ret = ret;
+            if (@params != null)
+                dyn = new DynamicMethod("Myf", ret, @params.ToArray(), typeof(void));
+            else dyn = new DynamicMethod("Myf", ret, null, typeof(void));
+            gen = dyn.GetILGenerator();
+        }
+
+        public void Emit(OpCode op, DynamicMethod dyn)
+        {
+            gen.Emit(op, dyn);
+        }
+
+        public void EmitEq(OpCode op)
+        {
+            Label @true = gen.DefineLabel();
+            Label resume = gen.DefineLabel();
+            gen.Emit(op, @true);
+            gen.Emit(OpCodes.Ldc_I4_0);
+            gen.Emit(OpCodes.Br, resume);
+            MarkLabel(@true);
+            gen.Emit(OpCodes.Ldc_I4_1);
+            MarkLabel(resume);
             
+
         }
 
         public void Emit(OpCode op)
@@ -34,7 +64,7 @@ namespace SimpleLang.Visitors
 
         public void Emit(OpCode op, int num)
         {
-            gen.Emit(op,num);
+            gen.Emit(op, num);
             if (write_commands)
                 commands.Add(op.ToString() + " " + num);
         }
@@ -52,6 +82,8 @@ namespace SimpleLang.Visitors
             if (write_commands)
                 commands.Add(op.ToString() + " var" + lb.LocalIndex);
         }
+
+
 
         public void Emit(OpCode op, Label l)
         {
@@ -86,11 +118,25 @@ namespace SimpleLang.Visitors
 
         public void EmitWriteLine(SimpleParser.TYPE t)
         {
+            
             switch (t)
             {
                 case (SimpleParser.TYPE.INT):
                     {
                         gen.Emit(OpCodes.Call, writeLineInt);
+                        break;
+                    }
+                case (SimpleParser.TYPE.BOOL):
+                    {
+                        Label @true = gen.DefineLabel();
+                        Label writeLine = gen.DefineLabel();
+                        gen.Emit(OpCodes.Brtrue, @true);
+                        gen.Emit(OpCodes.Ldstr, "false");
+                        gen.Emit(OpCodes.Br, writeLine);
+                        MarkLabel(@true);
+                        gen.Emit(OpCodes.Ldstr, "true");
+                        MarkLabel(writeLine);
+                        gen.Emit(OpCodes.Call, writeLineString);
                         break;
                     }
                 case (SimpleParser.TYPE.DOUBLE):
@@ -99,7 +145,7 @@ namespace SimpleLang.Visitors
                         break;
                     }
             }
-           
+
             if (write_commands)
                 commands.Add("WriteLine");
         }
@@ -112,6 +158,10 @@ namespace SimpleLang.Visitors
         public void RunProgram()
         {
             dyn.Invoke(null, null);
+            /*var resolver = typeof(DynamicMethod).GetField("m_resolver", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(dyn);
+            if (resolver == null) throw new ArgumentException("The dynamic method's IL has not been finalized.");
+            var  res = (byte[])resolver.GetType().GetField("m_code", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(resolver);
+            foreach (var b in res) Console.WriteLine(b); */
         }
 
         public void WriteCommandsOn()
@@ -122,6 +172,11 @@ namespace SimpleLang.Visitors
         public void WriteCommandsOff()
         {
             write_commands = false;
+        }
+
+        internal DynamicMethod getDynamicMethod()
+        {
+            return dyn;
         }
     }
 }

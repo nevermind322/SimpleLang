@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "SimpleLang3": {
+      "commandName": "Project",
+      "workingDirectory": "C:\\prog\\SimpleLanguage3"
+    },
+    "Профиль 1": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using ProgramTree;
+﻿using ProgramTree;
 
 namespace SimpleLang.Visitors
 {
@@ -11,7 +7,7 @@ namespace SimpleLang.Visitors
     // При переопределении методов для задания действий необходимо не забывать обходить подузлы
     class AutoVisitor: Visitor
     {
-        protected SimpleParser.SymbolTable top ;
+        protected SimpleParser.SymbolTable top = null;
         public override void VisitBinOpNode(BinOpNode binop) 
         {
             binop.Left.Invite(this);
@@ -31,14 +27,17 @@ namespace SimpleLang.Visitors
         public override void VisitBlockNode(BlockNode bl) 
         {
             top = bl.table;
+
             if (bl.StList.Count > 0 && bl.StList != null)
             {
                 foreach (var st in bl.StList)
                     st.Invite(this);
             }
+            top = top.prev;
+
         }
-       
-     
+
+
 
         public override void VisitIfNode(IfNode w)
         {
@@ -66,9 +65,10 @@ namespace SimpleLang.Visitors
         public override void VisitFuncNode(FuncNode fn)
         {
             fn.name.Invite(this);
+            foreach (var p in fn._params) p.Invite(this); 
             fn.returnTypeId.Invite(this);
             fn.body.Invite(this);
-
+            
         }
 
         public override void VisitWriteNode(WriteNode wr)
@@ -84,7 +84,48 @@ namespace SimpleLang.Visitors
 
         public override void VisitFuncBodyNode(FuncBodyNode fbn)
         {
-            foreach(var st in fbn.StList) { st.Invite(this); }
+            VisitBlockNode(fbn);
+        }
+
+        public override void VisitFuncCallNode(FuncCallNode fn)
+        {
+            fn.id.Invite(this);
+            foreach (var arg in fn.args)
+            {
+                arg.Invite(this);
+            }
+        }
+
+        public override void VisitReturnNode(ReturnNode returnNode)
+        {
+            returnNode.retExpr?.Invite(this);
+        }
+
+        public override void VisitFuncCallStmntNode(FuncCallStmntNode funcCallStmntNode)
+        {
+            funcCallStmntNode.call.Invite(this);
+        }
+
+        public override void VisitBoolNode(BoolNode boolNode)
+        {
+            
+        }
+
+        public override void VisitBoolBinOpNode(BoolBinOpNode boolBinOpNode)
+        {
+            boolBinOpNode.Left.Invite(this);
+            boolBinOpNode.Right.Invite(this);
+        }
+
+        public override void VisitLogicBinOpNode(LogicBinOpNode binop)
+        {
+            binop.Left.Invite(this);
+            binop.Right.Invite(this);
+        }
+
+        public override void VisitUnaryOpNode(UnaryOpNode unaryOp)
+        {
+            unaryOp.expr.Invite(this);
         }
     }
 }

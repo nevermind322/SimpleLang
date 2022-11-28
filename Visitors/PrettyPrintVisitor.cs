@@ -141,5 +141,50 @@ namespace SimpleLang.Visitors
         {
             VisitBlockNode(fbn);
         }
+
+        public override void VisitFuncCallNode(FuncCallNode fn)
+        {
+            Text += IndentStr();
+            fn.id.Invite(this);
+            Text +=  "(";
+            foreach (var arg in fn.args) {
+                arg.Invite(this);
+                Text += ", ";
+            }
+            Text += ")";
+        }
+
+        public override void VisitReturnNode(ReturnNode returnNode)
+        {
+            Text += IndentStr() + "return ";
+            returnNode.retExpr?.Invite(this);
+        }
+
+        public override void VisitFuncCallStmntNode(FuncCallStmntNode funcCallStmntNode)
+        {
+            funcCallStmntNode.call.Invite(this);    
+        }
+
+        public override void VisitBoolNode(BoolNode boolNode)
+        {
+            if (boolNode.value) Text += "true";
+            else Text += "false";
+        }
+
+        public override void VisitBoolBinOpNode(BoolBinOpNode boolBinOpNode)
+        {
+            VisitBinOpNode(boolBinOpNode);
+        }
+
+        public override void VisitLogicBinOpNode(LogicBinOpNode logicBinOpNode)
+        {
+            VisitBinOpNode(logicBinOpNode);
+        }
+
+        public override void VisitUnaryOpNode(UnaryOpNode unaryOp)
+        {
+            Text += unaryOp.op;
+            unaryOp.expr.Invite(this);
+        }
     }
 }

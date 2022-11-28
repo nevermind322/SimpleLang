@@ -26,9 +26,18 @@ namespace SimpleLang.Visitors
         public abstract void VisitFuncNode(FuncNode fn);
 
         public abstract void VisitParamNode(ParamNode pn);
-
+                
         public abstract void VisitFuncBodyNode(FuncBodyNode fbn);
 
+        public abstract void VisitFuncCallNode(FuncCallNode fn);
+        public abstract void VisitReturnNode(ReturnNode returnNode);
 
+        public abstract void VisitFuncCallStmntNode(FuncCallStmntNode funcCallStmntNode);
+
+        public abstract void VisitBoolNode(BoolNode boolNode);
+
+        public abstract void VisitBoolBinOpNode(BoolBinOpNode boolBinOpNode);
+        public  abstract void VisitLogicBinOpNode(LogicBinOpNode logicBinOpNode);
+        public abstract void VisitUnaryOpNode(UnaryOpNode unaryOp);
     }
 }
