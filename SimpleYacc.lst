@@ -4,7 +4,7 @@
 // ==========================================================================
 //  Version:  1.3.6
 //  Machine:  LAPTOP-9M8I2R2U
-//  DateTime: 27.11.2022 18:08:04
+//  DateTime: 04.12.2022 14:09:17
 //  UserName: Алексей
 // ==========================================================================
 
@@ -39,14 +39,14 @@
 %start progr
 
 %token BEGIN END CYCLE ASSIGN ASSIGNPLUS ASSIGNMINUS ASSIGNMULT SEMICOLON VAR PLUS MINUS MULT DIV LPAREN RPAREN COLUMN DIVI MOD IF THEN ELSE FUN
-%token COLON RETURN WRITE WHILE FOR FALSE TRUE L, LE, G, GE, EQ, NEQ OR AND
+%token COLON RETURN WRITE WHILE FOR FALSE TRUE L, LE, G, GE, EQ, NEQ OR AND NOT
 %token <iVal> INUM 
 %token <dVal> RNUM 
 %token <sVal> ID 
 
 
 
-%type <eVal> expr ident T F func_call valueParam bool_expr
+%type <eVal> expr ident T F func_call valueParam bool_expr disjunction conjunction additive_expr
 %type <stVal> statement assign  cycle empty if return  while
 %type <stVal> declaration var_decl func_decl param write loop
 %type <blVal> stlist block
@@ -55,8 +55,12 @@
 %type <bVal> bool_literal
 
 %%
-// Warning: NonTerminal symbol "logic_expr" is unreachable
-// -------------------------------------------------------
+// Error: NonTerminal symbol "bool_exprT" has no productions
+// Warning: Terminating bool_exprT fixes the following size-1 NonTerminal set
+   // {bool_exprT}
+// Error: There are 1 non-terminating NonTerminal Symbols
+   //  {bool_exprT}
+// --------------------------------------------------------------------------
 
 progr   : block { root = $1; }
 		;
@@ -96,20 +100,29 @@ ident 	: ID {$$ = new IdNode($1);}
 assign 	: ident ASSIGN expr { $$ = new AssignNode($1 as IdNode, $3); }
 		;
 
-expr	: expr PLUS T { $$ = new BinOpNode($1,$3,"+"); }
-		| expr MINUS T { $$ = new BinOpNode($1,$3,"-"); }
-		| T { $$ = $1; }
-		;
-logic_expr : T OR T
-		| T AND T
+
+expr	: disjunction  { $$ = $1; }
 		;
 
-bool_expr	: T L F {$$ = new BoolBinOpNode($1, $3, "<");}
-		| T LE F {$$ = new BoolBinOpNode($1, $3, "<=");}
-		| T G F {$$ = new BoolBinOpNode($1, $3, ">");}
-		| T GE F {$$ = new BoolBinOpNode($1, $3, ">=");}
-		| T EQ F {$$ = new BoolBinOpNode($1, $3, "==");}
-		| T NEQ F {$$ = new BoolBinOpNode($1, $3, "!=");}
+disjunction : disjunction OR conjunction{$$ = new LogicBinOpNode($1, $3, "||");}
+		| conjunction {$$ = $1;}
+		;
+conjunction :  conjunction AND bool_expr {$$ = new LogicBinOpNode($1, $3, "&&");}
+		| bool_expr {$$ = $1;}
+		;
+
+additive_expr :additive_expr PLUS T { $$ = new BinOpNode($1,$3,"+"); }
+		| additive_expr MINUS T { $$ = new BinOpNode($1,$3,"-"); }
+		| T {$$ = $1;}
+		;
+
+bool_expr	: bool_expr L additive_expr {$$ = new BoolBinOpNode($1, $3, "<");}
+		| bool_expr LE additive_expr {$$ = new BoolBinOpNode($1, $3, "<=");}
+		| bool_expr G additive_expr {$$ = new BoolBinOpNode($1, $3, ">");}
+		| bool_expr GE additive_expr {$$ = new BoolBinOpNode($1, $3, ">=");}
+		| bool_exprT EQ additive_expr {$$ = new BoolBinOpNode($1, $3, "==");}
+		| bool_expr NEQ additive_expr {$$ = new BoolBinOpNode($1, $3, "!=");}
+		| additive_expr {$$ = $1;}
 		;
 T 		: T MULT F { $$ = new BinOpNode($1,$3,"*"); }
 		| T DIV F { $$ = new BinOpNode($1,$3,"/"); }
@@ -125,6 +138,7 @@ F 		: ident  { $$ = $1 as IdNode; }
 		| LPAREN expr RPAREN { $$ = $2; }
 		| func_call {$$ = $1;}
 		| bool_literal {$$ = new BoolNode($1);}
+		| NOT F {$$ = new UnaryOpNode($2, "!");}
 		;
 
 bool_literal :TRUE {$$ = true;}| FALSE {$$ = false;}

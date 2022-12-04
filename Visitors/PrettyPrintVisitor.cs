@@ -186,5 +186,13 @@ namespace SimpleLang.Visitors
             Text += unaryOp.op;
             unaryOp.expr.Invite(this);
         }
+
+        public override void VisitWhileNode(WhileNode whileNode)
+        {
+            Text += "while(";
+            whileNode.Expr.Invite(this);
+            Text += ")";
+            whileNode.stmnt.Invite(this);
+        }
     }
 }

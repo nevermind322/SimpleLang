@@ -35,7 +35,7 @@
 
 
 
-%type <eVal> expr ident T F func_call valueParam bool_expr logic_expr
+%type <eVal> expr ident T F func_call valueParam bool_expr disjunction conjunction additive_expr
 %type <stVal> statement assign  cycle empty if return  while
 %type <stVal> declaration var_decl func_decl param write loop
 %type <blVal> stlist block
@@ -56,7 +56,7 @@ stlist	:
 			}
 			| statement 
 			{ 
-				$$ = new BlockNode($1); 
+				$$ = new BlockNode($1, @$); 
 			}
 		;
 
@@ -68,52 +68,60 @@ statement: assign { $$ = $1; }
 		| return  {$$ = $1;}
 		| write   {$$ = $1;}
 		| empty   { $$ = $1; }
-		| func_call {$$ = new FuncCallStmntNode($1 as FuncCallNode); }
+		| func_call {$$ = new FuncCallStmntNode($1 as FuncCallNode, @$); }
 		;
 
-empty	: { $$ = new EmptyNode(); }
+empty	: { $$ = new EmptyNode( @$); }
 		;
 	
-write	: WRITE LPAREN expr RPAREN { $$ = new WriteNode($3); }
+write	: WRITE LPAREN expr RPAREN { $$ = new WriteNode($3, @$); }
 		;
 
-ident 	: ID {$$ = new IdNode($1);}	
+ident 	: ID {$$ = new IdNode($1, @$);}	
 	;
 	
-assign 	: ident ASSIGN expr { $$ = new AssignNode($1 as IdNode, $3); }
+assign 	: ident ASSIGN expr { $$ = new AssignNode($1 as IdNode, $3, @$); }
 		;
 
-expr	: expr PLUS T { $$ = new BinOpNode($1,$3,"+"); }
-		| expr MINUS T { $$ = new BinOpNode($1,$3,"-"); }
-		| logic_expr  { $$ = $1; }
+
+expr	: disjunction  { $$ = $1; }
 		;
-logic_expr : T OR F{$$ = new LogicBinOpNode($1, $3, "||");}
-		| T AND F {$$ = new LogicBinOpNode($1, $3, "&&");}
-		| NOT T {$$ = new UnaryOpNode($2, "!");}
+
+disjunction : disjunction OR conjunction{$$ = new LogicBinOpNode($1, $3, "||", @$);}
+		| conjunction {$$ = $1;}
+		;
+conjunction :  conjunction AND bool_expr {$$ = new LogicBinOpNode($1, $3, "&&", @$);}
+		| bool_expr {$$ = $1;}
+		;
+
+additive_expr :additive_expr PLUS T { $$ = new BinOpNode($1,$3,"+", @$); }
+		| additive_expr MINUS T { $$ = new BinOpNode($1,$3,"-", @$); }
 		| T {$$ = $1;}
 		;
 
-bool_expr	: T L F {$$ = new BoolBinOpNode($1, $3, "<");}
-		| T LE F {$$ = new BoolBinOpNode($1, $3, "<=");}
-		| T G F {$$ = new BoolBinOpNode($1, $3, ">");}
-		| T GE F {$$ = new BoolBinOpNode($1, $3, ">=");}
-		| T EQ F {$$ = new BoolBinOpNode($1, $3, "==");}
-		| T NEQ F {$$ = new BoolBinOpNode($1, $3, "!=");}
+bool_expr	: bool_expr L additive_expr {$$ = new BoolBinOpNode($1, $3, "<", @$);}
+		| bool_expr LE additive_expr {$$ = new BoolBinOpNode($1, $3, "<=", @$);}
+		| bool_expr G additive_expr {$$ = new BoolBinOpNode($1, $3, ">", @$);}
+		| bool_expr GE additive_expr {$$ = new BoolBinOpNode($1, $3, ">=", @$);}
+		| bool_expr EQ additive_expr {$$ = new BoolBinOpNode($1, $3, "==", @$);}
+		| bool_expr NEQ additive_expr {$$ = new BoolBinOpNode($1, $3, "!=", @$);}
+		| additive_expr {$$ = $1;}
 		;
-T 		: T MULT F { $$ = new BinOpNode($1,$3,"*"); }
-		| T DIV F { $$ = new BinOpNode($1,$3,"/"); }
-		| T MOD F {$$ = new BinOpNode($1,$3,"%");}
-		| T DIVI F {$$ = new BinOpNode($1,$3,"//");}
+T 		: T MULT F { $$ = new BinOpNode($1,$3,"*", @$); }
+		| T DIV F { $$ = new BinOpNode($1,$3,"/", @$); }
+		| T MOD F {$$ = new BinOpNode($1,$3,"%", @$);}
+		| T DIVI F {$$ = new BinOpNode($1,$3,"//", @$);}
 		| F { $$ = $1; }
-		| bool_expr {$$ = $1;}
+		
 		;
 		
 F 		: ident  { $$ = $1 as IdNode; }
-		| INUM { $$ = new IntNumNode($1); }
-		| RNUM {$$ = new RealNumNode($1);}
+		| INUM { $$ = new IntNumNode($1, @$); }
+		| RNUM {$$ = new RealNumNode($1, @$);}
 		| LPAREN expr RPAREN { $$ = $2; }
 		| func_call {$$ = $1;}
-		| bool_literal {$$ = new BoolNode($1);}
+		| bool_literal {$$ = new BoolNode($1, @$);}
+		| NOT F {$$ = new UnaryOpNode($2, "!", @$);}
 		;
 
 bool_literal :TRUE {$$ = true;}| FALSE {$$ = false;}
@@ -121,29 +129,29 @@ bool_literal :TRUE {$$ = true;}| FALSE {$$ = false;}
 block	: BEGIN stlist END { $$ = $2; }
 		;
 		
-if		: IF expr THEN statement {$$  = new IfNode($2, $4, null);}
-		| IF expr THEN statement ELSE statement	{$$ = new IfNode($2, $4, $6);}
+if		: IF expr THEN statement {$$  = new IfNode($2, $4, null, @$);}
+		| IF expr THEN statement ELSE statement	{$$ = new IfNode($2, $4, $6, @$);}
 		;
 
 loop	: cycle {$$ = $1;} | while {$$ =$1;} 
 		;
 
-cycle	: CYCLE expr statement { $$ = new CycleNode($2,$3); }
+cycle	: CYCLE expr statement { $$ = new CycleNode($2,$3, @$); }
 		;
 
-while	: WHILE LPAREN expr RPAREN statement
+while	: WHILE LPAREN expr RPAREN statement {$$ = new WhileNode($3, $5, @$);}
 		;
 
 declaration : var_decl	{$$ = $1;}
 		| func_decl	{$$ = $1;}	
 		;
 
-var_decl : ident ident {$$ =  new VarNode($1 as IdNode, $2 as IdNode, null);}
-		| ident ident ASSIGN expr {$$ =  new VarNode($1 as IdNode, $2 as IdNode, $4);}
+var_decl : ident ident {$$ =  new VarNode($1 as IdNode, $2 as IdNode, null, @$);}
+		| ident ident ASSIGN expr {$$ =  new VarNode($1 as IdNode, $2 as IdNode, $4, @$);}
 		;
 
 func_decl : FUN ident LPAREN params RPAREN COLON ident block
-			{$$ = new FuncNode($2 as IdNode, $4, $7 as IdNode,new FuncBodyNode($8));}
+			{$$ = new FuncNode($2 as IdNode, $4, $7 as IdNode,new FuncBodyNode($8, @$), @$);}
 		;
 
 params  : param {$$ = new List<ParamNode>(); $$.Add($1 as ParamNode);}
@@ -151,13 +159,13 @@ params  : param {$$ = new List<ParamNode>(); $$.Add($1 as ParamNode);}
 		| empty {$$ = new List<ParamNode>();}
 		; 
 
-param	: ident ident {$$ = new ParamNode($1 as IdNode, $2 as IdNode);}
+param	: ident ident {$$ = new ParamNode($1 as IdNode, $2 as IdNode, @$);}
 		;
 
-return	: RETURN expr {$$ = new ReturnNode($2);}| RETURN {$$ = new ReturnNode(null);}
+return	: RETURN expr {$$ = new ReturnNode($2, @$);}| RETURN {$$ = new ReturnNode(null, @$);}
 		;
 
-func_call : ident LPAREN valueParams RPAREN {$$ = new FuncCallNode($1 as IdNode, $3);}
+func_call : ident LPAREN valueParams RPAREN {$$ = new FuncCallNode($1 as IdNode, $3, @$);}
 		;
 
 valueParams : valueParam {$$ = new List<ExprNode>(); $$.Add($1);}

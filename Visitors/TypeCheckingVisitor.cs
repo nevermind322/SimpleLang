@@ -13,8 +13,7 @@ namespace SimpleLang.Visitors
             {
                 case (SymbolTable.SymbolInfo.Kind.VAR):
                     {
-                        var var_si = si as SymbolTable.VarInfo;
-                        if (var_si != null)
+                        if (si is SymbolTable.VarInfo var_si)
                             id.type = var_si.type;
                         else throw new Exception();
                         return;
@@ -28,7 +27,7 @@ namespace SimpleLang.Visitors
                         return;
                     }
             }
-            throw new SyntaxException(id.Name + " ссылается на функцию");
+            throw new SyntaxException(id.Name + " ссылается на функцию", id.location);
         }
         public override void VisitFuncNode(FuncNode fn)
         {
@@ -47,9 +46,9 @@ namespace SimpleLang.Visitors
 
                 if (FuncInfo.type.params_type.Count != fn.args.Count)
                     if (FuncInfo.type.params_type.Count < fn.args.Count)
-                        throw new SyntaxException("слишком много аргументов");
+                        throw new SemanticException("слишком много аргументов", fn.location);
                     else
-                        throw new SyntaxException("слишком мало аргументов");
+                        throw new SemanticException("слишком мало аргументов", fn.location);
                 int i = 0;
                 TYPE arg_type;
                 TYPE param_type;
@@ -59,31 +58,39 @@ namespace SimpleLang.Visitors
                     arg.Invite(this);
                     arg_type = arg.type;
                     param_type = FuncInfo.type.params_type[i++];
-                    result_type = ParserHelper.widen(arg_type, param_type);
-                    if (result_type == TYPE.VOID) throw new SyntaxException("аргумент не может быть void");
-                    if (ParserHelper.canBeWiden(from: result_type, to: param_type))
-                        arg.type = param_type;
-                    else
-                        throw new SyntaxException("нельзя привести " + arg_type + " к " + param_type);
+                    try { result_type = ParserHelper.widen(arg_type, param_type); }
+                    catch (TypeException e) { throw new SemanticException(e.Message, arg.location); }
+                    if (result_type == TYPE.VOID) throw new SemanticException("аргумент не может быть void", arg.location);
+                    try
+                    {
+                        if (ParserHelper.canBeWiden(from: result_type, to: param_type))
+                            arg.type = param_type;
+                        else
+                            throw new SemanticException("нельзя привести " + arg_type + " к " + param_type, arg.location);
+                    }
+                    catch (TypeException e)
+                    {
+                        throw new SemanticException(e.Message, arg.location);
+                    }
+                    return;
                 }
-                return;
+                throw new SyntaxException(fn.id.Name + " не функция", fn.location);
             }
-            throw new SyntaxException(fn.id.Name + " не функция");
         }
         public override void VisitBinOpNode(BinOpNode binop)
         {
-            binop.Left.Invite(this); 
+            binop.Left.Invite(this);
             binop.Right.Invite(this);
             TYPE r_type = binop.Right.type;
             TYPE l_type = binop.Left.type;
             if (binop.Left.type == TYPE.BOOL || binop.Right.type == TYPE.BOOL)
-                throw new SyntaxException("применение " + binop.Op + " к bool недопустимо");
+                throw new SemanticException("применение " + binop.Op + " к bool недопустимо", binop.location);
             if (r_type != l_type) binop.type = TYPE.DOUBLE;
             else binop.type = l_type;
 
             if (binop.Op == "%" || binop.Op == "//")
             {
-                if (binop.type == TYPE.DOUBLE) throw new SyntaxException("Неверный тип");
+                if (binop.type == TYPE.DOUBLE) throw new SemanticException("Неверный тип", binop.location);
             }
         }
 
@@ -92,9 +99,9 @@ namespace SimpleLang.Visitors
             binop.Left.Invite(this);
             binop.Right.Invite(this);
             if (binop.Left.type == TYPE.VOID || binop.Right.type == TYPE.VOID)
-                throw new SyntaxException("нельзя сравнивать с void");
+                throw new SemanticException("нельзя сравнивать с void", binop.location);
             if (binop.Left.type == TYPE.BOOL || binop.Right.type == TYPE.BOOL)
-                throw new SyntaxException("нельзя сравнивать с bool");
+                throw new SemanticException("нельзя сравнивать с bool", binop.location);
 
         }
 
@@ -104,7 +111,12 @@ namespace SimpleLang.Visitors
             binop.Left.Invite(this);
             binop.Right.Invite(this);
             if (binop.Left.type != TYPE.BOOL || binop.Right.type != TYPE.BOOL)
-                throw new SyntaxException("в логическом выражении должен быть bool");
+                throw new SemanticException("в логическом выражении должен быть bool", binop.location);
+        }
+
+        public override void VisitWhileNode(WhileNode whileNode)
+        {
+            base.VisitWhileNode(whileNode);
         }
     }
 }

@@ -68,7 +68,7 @@ public override void yyerror(string format, params object[] args) // обработка с
 {
   var ww = args.Skip(1).Cast<string>().ToArray();
   string errorMsg = string.Format("({0},{1}): ¬стречено {2}, а ожидалось {3}", yyline, yycol, args[0], string.Join(" или ", ww));
-  throw new SyntaxException(errorMsg);
+  throw new SyntaxException(errorMsg, yylloc);
 }
 
 public void LexError()

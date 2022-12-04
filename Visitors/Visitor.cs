@@ -39,5 +39,6 @@ namespace SimpleLang.Visitors
         public abstract void VisitBoolBinOpNode(BoolBinOpNode boolBinOpNode);
         public  abstract void VisitLogicBinOpNode(LogicBinOpNode logicBinOpNode);
         public abstract void VisitUnaryOpNode(UnaryOpNode unaryOp);
+        public  abstract void VisitWhileNode(WhileNode whileNode);
     }
 }

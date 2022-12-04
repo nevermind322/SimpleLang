@@ -3,6 +3,7 @@ using System;
 using ProgramTree;
 using System.Linq;
 using System.Reflection.Emit;
+using QUT.Gppg;
 
 namespace SimpleParser
 {
@@ -23,7 +24,7 @@ namespace SimpleParser
                 TYPE.VOID => typeof(void),
                 TYPE.INT => typeof(int),
                 TYPE.DOUBLE => typeof(double),
-                _ => throw new SyntaxException("Неизвестный тип"),
+                _ => throw new TypeException("Неизвестный тип"),
             };
         }
 
@@ -37,7 +38,7 @@ namespace SimpleParser
     public class SymbolTable
     {
 
-        private Dictionary<string, SymbolInfo> table = new Dictionary<string, SymbolInfo>();
+        private Dictionary<string, SymbolInfo> table = new();
 
         public SymbolTable prev;
 
@@ -54,7 +55,7 @@ namespace SimpleParser
             {
                 if (t.table.TryGetValue(name, out res)) return res;
             }
-            throw new SyntaxException(name + " не объявлена");
+            return null;
         }
 
         public void Add(FuncNode dec)
@@ -75,10 +76,16 @@ namespace SimpleParser
         private void addParamInfo(ParamNode pn)
         {
 
-            TYPE type = ParserHelper.getType(pn.typeId.Name);
-
+            TYPE type;
+            try
+            {
+                type = ParserHelper.getType(pn.typeId.Name);
+            }
+            catch( TypeException e) {
+                throw new SyntaxException(e.Message, pn.location);
+            }
             if (type == TYPE.VOID)
-                throw new SyntaxException("параметр не может быть void");
+                throw new SemanticException("параметр не может быть void", pn.location);
 
             var info = new ParamInfo(type, pn.name.Name, pn.pos);
             table.Add(pn.name.Name, info);
@@ -90,27 +97,49 @@ namespace SimpleParser
             TYPE t;
             foreach (var param in fn._params)
             {
-                t = ParserHelper.getType(param.typeId.Name);
-                if (t == TYPE.VOID) throw new SyntaxException("параметр не может быть void");
+                
+                try
+                {
+                    t = ParserHelper.getType(param.typeId.Name);
+                }
+                catch (TypeException e)
+                {
+                    throw new SyntaxException(e.Message, param.location);
+                }
+                if (t == TYPE.VOID) throw new SemanticException("параметр не может быть void", fn.location);
                 ft.addParamType(t);
 
             }
-            t = ParserHelper.getType(fn.returnTypeId.Name);
-
+            
+            try
+            {
+                t = ParserHelper.getType(fn.returnTypeId.Name);
+            }
+            catch (TypeException e)
+            {
+                throw new SyntaxException(e.Message, fn.returnTypeId.location);
+            }
             ft.return_type = t;
             FunctionInfo info = new(ft, fn.name.Name);
 
             info.BodyTable = fn.body.table;
             table.Add(fn.name.Name, info);
-
+            
         }
 
         private void addVarInfo(VarNode vn)
         {
-            TYPE type = ParserHelper.getType(vn.typeId.Name);
-
+            TYPE type;
+            try
+            {
+                type = ParserHelper.getType(vn.typeId.Name);
+            }
+            catch (TypeException e)
+            {
+                throw new SyntaxException(e.Message, vn.location);
+            }
             if (type == TYPE.VOID)
-                throw new SyntaxException("переменная не может быть void");
+                throw new SemanticException("переменная не может быть void", vn.location);
 
             var info = new VarInfo(type, vn.name.Name);
             table.Add(vn.name.Name, info);
@@ -180,9 +209,27 @@ namespace SimpleParser
         public LexException(string msg) : base(msg) { }
     }
 
-    public class SyntaxException : Exception
+    public class SyntaxException : CompilerException
     {
-        public SyntaxException(string msg) : base(msg) { }
+        public SyntaxException(string msg, LexLocation l) : base(msg, l) { }
+    }
+
+    public class SemanticException : CompilerException
+    {
+        public SemanticException(string msg, LexLocation l) : base(msg, l) { }
+    }
+
+    public class TypeException : Exception
+    {
+        public TypeException(string msg) : base(msg) { }
+    }
+
+    public class CompilerException : Exception
+    {
+        public LexLocation location;
+        public CompilerException(string msg, LexLocation l) : base(msg) {
+            location = l;
+        }
     }
 
     public static class ParserHelper
@@ -213,13 +260,13 @@ namespace SimpleParser
                     }
                 default:
                     {
-                        throw new SyntaxException("Неизвестный тип");
+                        throw new TypeException("Неизвестный тип");
                     }
             }
         }
         public static TYPE widen(TYPE t1, TYPE t2)
         {
-            if (t1 == TYPE.VOID || t2 == TYPE.VOID) throw new SyntaxException("нельзя привести к void");
+            if (t1 == TYPE.VOID || t2 == TYPE.VOID) throw new TypeException("нельзя привести к void");
             if (t1 == t2) return t1;
             return CoercionTable.getCoercion(t1, t2);
         }
@@ -227,7 +274,7 @@ namespace SimpleParser
         public static bool canBeWiden(TYPE from, TYPE to)
         {
 
-            if (from == TYPE.VOID || to == TYPE.VOID) throw new SyntaxException("нельзя привести к void");
+            if (from == TYPE.VOID || to == TYPE.VOID) throw new TypeException("нельзя привести к void");
             if(to == from  ) return true;
             return CoercionTable.canBeCoerced(from, to);
 

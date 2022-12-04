@@ -26,22 +26,23 @@ namespace SimpleLang.Visitors
             // Т.е. он вызывается только если id находится в выражении, а значит, мы просто кладем его значение на стек!
 
             var si = top.find(id.Name);
+            if (si == null) throw new SyntaxException(id.Name + "не объявлена", id.location);
 
             switch (si.kind)
             {
                 case (SymbolTable.SymbolInfo.Kind.VAR):
                     {
                         if (!si.allocated)
-                            throw new SyntaxException(si.name + " не может использоваться перед объявлением");
+                            throw new SyntaxException(si.name + " не может использоваться перед объявлением", id.location);
                         if (!si.initialized)
-                            throw new SyntaxException(si.name + " не определена");
+                            throw new SyntaxException(si.name + " не определена", id.location);
                         var v_si = si as SymbolTable.VarInfo;
                         genc.Emit(OpCodes.Ldloc, v_si.addr);
                         break;
                     }
                 case (SymbolTable.SymbolInfo.Kind.FUNCTION):
                     {
-                        throw new SyntaxException(si.name + " ссылается на функцию!");
+                        throw new SemanticException(si.name + " ссылается на функцию!", id.location);
                     }
                 case (SymbolTable.SymbolInfo.Kind.PARAM):
                     {
@@ -99,13 +100,18 @@ namespace SimpleLang.Visitors
             {
                 vn.valExpr.Invite(this);
                 TYPE expr_type = vn.valExpr.type;
-                if (!ParserHelper.canBeWiden(from: expr_type, to: id_type))
-                    throw new SyntaxException("Невозможно привести " + expr_type
-                        + " к " + id_type);
-                else if (id_type != TYPE.INT && id_type != TYPE.BOOL)
+                try
                 {
-                    if (expr_type == TYPE.INT || expr_type == TYPE.BOOL) genc.Emit(OpCodes.Conv_R8);
+                    if (!ParserHelper.canBeWiden(from: expr_type, to: id_type))
+                        throw new SemanticException("Невозможно привести " + expr_type
+                            + " к " + id_type, vn.location);
+                    else if (id_type != TYPE.INT && id_type != TYPE.BOOL)
+                    {
+                        if (expr_type == TYPE.INT || expr_type == TYPE.BOOL) genc.Emit(OpCodes.Conv_R8);
+                    }
                 }
+                catch (TypeException e)
+                    { throw new SemanticException(e.Message, vn.location); }
                 genc.Emit(OpCodes.Stloc, addr);
                 top.init(vn.name.Name);
             }
@@ -119,18 +125,33 @@ namespace SimpleLang.Visitors
         public override void VisitFuncNode(FuncNode fn)
         {
             var f_si = top.find(fn.name.Name) as SymbolTable.FunctionInfo;
+
             List<Type> types = new();
             foreach (var t in f_si.type.params_type)
             {
-                types.Add(FuncType.getCStype(t));
+                try
+                {
+                    types.Add(FuncType.getCStype(t));
+                }
+                catch (TypeException e)
+                {
+                    throw new SemanticException(e.Message, fn.location);
+                }
             }
             if (types.Count == 0) types = null;
-            var func_code_creator = new GenCodeVisitor(types,
-                FuncType.getCStype(f_si.type.return_type))
+            GenCodeVisitor func_code_creator;
+            try
             {
-                top = f_si.BodyTable
-            };
-
+                func_code_creator = new GenCodeVisitor(types,
+                   FuncType.getCStype(f_si.type.return_type))
+                {
+                    top = f_si.BodyTable
+                };
+            }
+            catch (TypeException e)
+            {
+                throw new SemanticException(e.Message, fn.location);
+            }
             fn.body.Invite(func_code_creator);
             if (f_si.type.return_type == TYPE.VOID)
                 func_code_creator.EndProgram();
@@ -239,7 +260,7 @@ namespace SimpleLang.Visitors
                         genc.EmitEq(OpCodes.Bne_Un);
                         break;
                     }
-                default: throw new SyntaxException("неизвестная операция");
+                default: throw new SyntaxException("неизвестная операция", binop.location);
             }
         }
 
@@ -261,7 +282,7 @@ namespace SimpleLang.Visitors
                     }
                 default:
                     {
-                        throw new SyntaxException("неизвестная операция");
+                        throw new SyntaxException("неизвестная операция", binop.location);
                     }
             }
         }
@@ -274,7 +295,7 @@ namespace SimpleLang.Visitors
                 case ("!"):
                     {
                         if (unaryOp.expr.type != TYPE.BOOL)
-                            throw new SyntaxException("Отрицание можно применить только в bool");
+                            throw new SemanticException("Отрицание можно применить только в bool", unaryOp.location);
 
                         Label l = genc.DefineLabel();
                         Label r = genc.DefineLabel();
@@ -284,10 +305,10 @@ namespace SimpleLang.Visitors
                         genc.MarkLabel(l);
                         genc.Emit(OpCodes.Ldc_I4_0);
                         genc.MarkLabel(r);
-                        
+
                         break;
                     }
-                default: throw new SyntaxException("неизвестная операция");
+                default: throw new SyntaxException("неизвестная операция", unaryOp.location);
 
             }
         }
@@ -297,7 +318,7 @@ namespace SimpleLang.Visitors
             a.Expr.Invite(this);
             TYPE expr_type = a.Expr.type;
             if (id_type == TYPE.INT && expr_type == TYPE.DOUBLE)
-                throw new SyntaxException("Невозможно привести double к  int");
+                throw new SemanticException("Невозможно привести double к  int", a.location);
             else if (id_type != TYPE.INT)
             {
                 if (expr_type == TYPE.INT) genc.Emit(OpCodes.Conv_R8);
@@ -315,7 +336,7 @@ namespace SimpleLang.Visitors
                     }
                 case (SymbolTable.SymbolInfo.Kind.FUNCTION):
                     {
-                        throw new SyntaxException(si.name + " ссылается на функцию!");
+                        throw new SyntaxException(si.name + " ссылается на функцию!", a.location);
                     }
             }
 
@@ -347,6 +368,23 @@ namespace SimpleLang.Visitors
 
             genc.MarkLabel(endLoop);
         }
+
+        public override void VisitWhileNode(WhileNode whileNode)
+        {
+            Label start = genc.DefineLabel();
+            Label end = genc.DefineLabel();
+
+            genc.MarkLabel(start);
+            if (whileNode.Expr.type != TYPE.BOOL)
+                throw new SemanticException("ожидалось bool", whileNode.location);
+            whileNode.Expr.Invite(this);
+            genc.Emit(OpCodes.Brfalse, end);
+            
+            whileNode.stmnt.Invite(this);
+            genc.Emit(OpCodes.Br, start);
+            genc.MarkLabel(end);
+        }
+
         public override void VisitIfNode(IfNode w)
         {
             genc.Emit(OpCodes.Ldc_I4, 0);
